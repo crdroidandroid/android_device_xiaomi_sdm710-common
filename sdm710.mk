@@ -373,6 +373,10 @@ PRODUCT_PACKAGES += \
     android.hardware.thermal@1.0-service \
     thermal.sdm710
 
+# Tracing
+PRODUCT_PACKAGES += \
+    android.hardware.atrace@1.0-service.pixel
+
 # Trust HAL
 PRODUCT_PACKAGES += \
      vendor.lineage.trust@1.0-service
