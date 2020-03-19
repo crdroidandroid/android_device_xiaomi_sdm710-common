@@ -1,7 +1,3 @@
--keep class org.chaldeastudio.deviceparts.dirac.* {
-  *;
-}
-
--keep class org.chaldeastudio.deviceparts.doze.* {
+-keep class org.lineageos.settings.doze.* {
   *;
 }
