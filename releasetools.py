@@ -61,12 +61,13 @@ def OTA_UpdateFirmware(info):
   info.script.AppendExtra('package_extract_file("install/firmware-update/xbl_config.elf", "/dev/block/bootdevice/by-name/xbl_config");')
 
 def AddImage(info, input_zip, basename, dest):
-  path = "IMAGE/" + basename
+  path = "IMAGES/" + basename
   if path not in input_zip.namelist():
     return
 
   data = input_zip.read(path)
   common.ZipWriteStr(info.output_zip, basename, data)
+  info.script.Print("Patching {} image unconditionally...".format(dest.split('/')[-1]))
   info.script.AppendExtra('package_extract_file("%s", "%s");' % (basename, dest))
 
 def OTA_InstallEnd(info, input_zip):
