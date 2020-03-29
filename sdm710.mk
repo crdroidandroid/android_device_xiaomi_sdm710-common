@@ -245,7 +245,7 @@ PRODUCT_PACKAGES += \
 
 # Input
 PRODUCT_COPY_FILES += \
-    $(COMMON_PATH)/keylayout/sdm710-tavil-snd-card_Button_Jack.kl:$(TARGET_COPY_OUT_SYSTEM)/usr/keylayout/sdm710-tavil-snd-card_Button_Jack.kl
+    $(COMMON_PATH)/keylayout/sdm670-mtp-snd-card_Button_Jack.kl:$(TARGET_COPY_OUT_SYSTEM)/usr/keylayout/sdm670-mtp-snd-card_Button_Jack.kl
 
 # IPA
 PRODUCT_PACKAGES += \
