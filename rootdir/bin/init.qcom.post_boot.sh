@@ -337,11 +337,8 @@ function configure_zram_parameters() {
 
     low_ram=`getprop ro.config.low_ram`
 
-    # Zram disk - 75% for Go devices.
-    # For 512MB Go device, size = 384MB, set same for Non-Go.
-    # For 1GB Go device, size = 768MB, set same for Non-Go.
-    # For >=2GB Non-Go devices, size = 50% of RAM size. Limit the size to 4GB.
-    # And enable lz4 zram compression for Go targets.
+    # Zram disk
+    # For >4GB device, size = 1024MB.
 
     RamSizeGB=`echo "($MemTotal / 1048576 ) + 1" | bc`
     zRamSizeBytes=`echo "$RamSizeGB * 1024 * 1024 * 1024 / 2" | bc`
@@ -385,25 +382,14 @@ function configure_read_ahead_kb_values() {
     MemTotalStr=`cat /proc/meminfo | grep MemTotal`
     MemTotal=${MemTotalStr:16:8}
 
-    # Set 128 for <= 3GB &
-    # set 512 for >= 4GB targets.
-    if [ $MemTotal -le 3145728 ]; then
-        echo 128 > /sys/block/mmcblk0/bdi/read_ahead_kb
-        echo 128 > /sys/block/mmcblk0/queue/read_ahead_kb
-        echo 128 > /sys/block/mmcblk0rpmb/bdi/read_ahead_kb
-        echo 128 > /sys/block/mmcblk0rpmb/queue/read_ahead_kb
-        echo 128 > /sys/block/dm-0/queue/read_ahead_kb
-        echo 128 > /sys/block/dm-1/queue/read_ahead_kb
-        echo 128 > /sys/block/dm-2/queue/read_ahead_kb
-    else
-        echo 512 > /sys/block/mmcblk0/bdi/read_ahead_kb
-        echo 512 > /sys/block/mmcblk0/queue/read_ahead_kb
-        echo 512 > /sys/block/mmcblk0rpmb/bdi/read_ahead_kb
-        echo 512 > /sys/block/mmcblk0rpmb/queue/read_ahead_kb
-        echo 512 > /sys/block/dm-0/queue/read_ahead_kb
-        echo 512 > /sys/block/dm-1/queue/read_ahead_kb
-        echo 512 > /sys/block/dm-2/queue/read_ahead_kb
-    fi
+    # Set 128 for >= 3GB
+    echo 128 > /sys/block/mmcblk0/bdi/read_ahead_kb
+    echo 128 > /sys/block/mmcblk0/queue/read_ahead_kb
+    echo 128 > /sys/block/mmcblk0rpmb/bdi/read_ahead_kb
+    echo 128 > /sys/block/mmcblk0rpmb/queue/read_ahead_kb
+    echo 128 > /sys/block/dm-0/queue/read_ahead_kb
+    echo 128 > /sys/block/dm-1/queue/read_ahead_kb
+    echo 128 > /sys/block/dm-2/queue/read_ahead_kb
 }
 
 function disable_core_ctl() {
@@ -525,13 +511,9 @@ else
         echo 53059 > /sys/module/lowmemorykiller/parameters/vmpressure_file_min
         fi
 
-        # Enable adaptive LMK for all targets &
-        # use Google default LMK series for all 64-bit targets >=2GB.
-        echo 1 > /sys/module/lowmemorykiller/parameters/enable_adaptive_lmk
-
-        # Enable oom_reaper
+        # Disable oom_reaper
         if [ -f /sys/module/lowmemorykiller/parameters/oom_reaper ]; then
-            echo 1 > /sys/module/lowmemorykiller/parameters/oom_reaper
+            echo 0 > /sys/module/lowmemorykiller/parameters/oom_reaper
         fi
 
         # Set PPR parameters
