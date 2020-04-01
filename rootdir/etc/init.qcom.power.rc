@@ -132,7 +132,7 @@ on enable-low-power
     write /sys/module/cpu_boost/parameters/input_boost_freq "0:1324800"
     write /sys/module/cpu_boost/parameters/input_boost_ms 120
 
-    # Limit the min frequency to 652MHz
+    # Limit the min frequency to 300MHz
     write /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq 300000
 
     # Enable oom_reaper
