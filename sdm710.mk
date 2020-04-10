@@ -130,7 +130,6 @@ PRODUCT_PACKAGES += \
     android.hardware.camera.provider@2.4-impl \
     android.hardware.camera.provider@2.4-service \
     libdng_sdk.vendor \
-    libstdc++.vendor \
     Snap \
     vendor.qti.hardware.camera.device@1.0.vendor
 
@@ -179,10 +178,15 @@ PRODUCT_PACKAGES += \
     android.hardware.memtrack@1.0-service \
     gralloc.sdm710 \
     hwcomposer.sdm710 \
+    libdisplayconfig \
+    libdisplayconfig.vendor \
+    libqdMetaData \
+    libqdMetaData.system \
     libtinyxml \
     libvulkan \
-    memtrack.sdm710 \
     vendor.display.config@1.7 \
+    vendor.display.config@1.7.vendor \
+    memtrack.sdm710 \
     vendor.qti.hardware.display.allocator@1.0-service
 
 # DRM
@@ -246,6 +250,10 @@ PRODUCT_PACKAGES += \
 # Input
 PRODUCT_COPY_FILES += \
     $(COMMON_PATH)/keylayout/sdm670-mtp-snd-card_Button_Jack.kl:$(TARGET_COPY_OUT_SYSTEM)/usr/keylayout/sdm670-mtp-snd-card_Button_Jack.kl
+
+# IRQ
+PRODUCT_COPY_FILES += \
+    $(LOCAL_PATH)/configs/msm_irqbalance.conf:$(TARGET_COPY_OUT_VENDOR)/etc/msm_irqbalance.conf
 
 # IPA
 PRODUCT_PACKAGES += \
@@ -382,6 +390,7 @@ PRODUCT_PACKAGES += \
 
 # VNDK-SP
 PRODUCT_PACKAGES += \
+    libstdc++.vendor \
     vndk-sp
 
 # VR
@@ -416,11 +425,7 @@ PRODUCT_COPY_FILES += \
 
 # WiFi Display
 PRODUCT_PACKAGES += \
-    libdisplayconfig \
-    libdisplayconfig.vendor \
-    libnl \
-    libqdMetaData \
-    libqdMetaData.system
+    libnl
 
 PRODUCT_BOOT_JARS += \
     WfdCommon
