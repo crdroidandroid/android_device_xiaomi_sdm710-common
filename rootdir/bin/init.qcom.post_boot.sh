@@ -337,8 +337,11 @@ function configure_zram_parameters() {
 
     low_ram=`getprop ro.config.low_ram`
 
-    # Zram disk
-    # For >4GB device, size = 1024MB.
+    # Zram disk - 75% for Go devices.
+    # For 512MB Go device, size = 384MB, set same for Non-Go.
+    # For 1GB Go device, size = 768MB, set same for Non-Go.
+    # For >=2GB Non-Go devices, size = 50% of RAM size. Limit the size to 4GB.
+    # And enable lz4 zram compression for Go targets.
 
     RamSizeGB=`echo "($MemTotal / 1048576 ) + 1" | bc`
     zRamSizeBytes=`echo "$RamSizeGB * 1024 * 1024 * 1024 / 2" | bc`
@@ -382,14 +385,25 @@ function configure_read_ahead_kb_values() {
     MemTotalStr=`cat /proc/meminfo | grep MemTotal`
     MemTotal=${MemTotalStr:16:8}
 
-    # Set 128 for >= 3GB
-    echo 128 > /sys/block/mmcblk0/bdi/read_ahead_kb
-    echo 128 > /sys/block/mmcblk0/queue/read_ahead_kb
-    echo 128 > /sys/block/mmcblk0rpmb/bdi/read_ahead_kb
-    echo 128 > /sys/block/mmcblk0rpmb/queue/read_ahead_kb
-    echo 128 > /sys/block/dm-0/queue/read_ahead_kb
-    echo 128 > /sys/block/dm-1/queue/read_ahead_kb
-    echo 128 > /sys/block/dm-2/queue/read_ahead_kb
+    # Set 128 for <= 3GB &
+    # set 512 for >= 4GB targets.
+    if [ $MemTotal -le 3145728 ]; then
+        echo 128 > /sys/block/mmcblk0/bdi/read_ahead_kb
+        echo 128 > /sys/block/mmcblk0/queue/read_ahead_kb
+        echo 128 > /sys/block/mmcblk0rpmb/bdi/read_ahead_kb
+        echo 128 > /sys/block/mmcblk0rpmb/queue/read_ahead_kb
+        echo 128 > /sys/block/dm-0/queue/read_ahead_kb
+        echo 128 > /sys/block/dm-1/queue/read_ahead_kb
+        echo 128 > /sys/block/dm-2/queue/read_ahead_kb
+    else
+        echo 512 > /sys/block/mmcblk0/bdi/read_ahead_kb
+        echo 512 > /sys/block/mmcblk0/queue/read_ahead_kb
+        echo 512 > /sys/block/mmcblk0rpmb/bdi/read_ahead_kb
+        echo 512 > /sys/block/mmcblk0rpmb/queue/read_ahead_kb
+        echo 512 > /sys/block/dm-0/queue/read_ahead_kb
+        echo 512 > /sys/block/dm-1/queue/read_ahead_kb
+        echo 512 > /sys/block/dm-2/queue/read_ahead_kb
+    fi
 }
 
 function disable_core_ctl() {
@@ -465,7 +479,7 @@ else
         disable_core_ctl
         # Enable oom_reaper for Go devices
         if [ -f /proc/sys/vm/reap_mem_on_sigkill ]; then
-            echo 0 > /proc/sys/vm/reap_mem_on_sigkill
+            echo 1 > /proc/sys/vm/reap_mem_on_sigkill
         fi
     else
 
@@ -511,9 +525,13 @@ else
         echo 53059 > /sys/module/lowmemorykiller/parameters/vmpressure_file_min
         fi
 
-        # Disable oom_reaper
+        # Enable adaptive LMK for all targets &
+        # use Google default LMK series for all 64-bit targets >=2GB.
+        echo 1 > /sys/module/lowmemorykiller/parameters/enable_adaptive_lmk
+
+        # Enable oom_reaper
         if [ -f /sys/module/lowmemorykiller/parameters/oom_reaper ]; then
-            echo 0 > /sys/module/lowmemorykiller/parameters/oom_reaper
+            echo 1 > /sys/module/lowmemorykiller/parameters/oom_reaper
         fi
 
         # Set PPR parameters
@@ -2831,30 +2849,30 @@ case "$target" in
             esac
 
       # Core control parameters on silver
-      echo 0 0 1 1 1 1 > /sys/devices/system/cpu/cpu0/core_ctl/not_preferred
-      echo 2 > /sys/devices/system/cpu/cpu0/core_ctl/min_cpus
-      echo 75 > /sys/devices/system/cpu/cpu0/core_ctl/busy_up_thres
-      echo 60 > /sys/devices/system/cpu/cpu0/core_ctl/busy_down_thres
+      echo 0 0 0 0 1 1 > /sys/devices/system/cpu/cpu0/core_ctl/not_preferred
+      echo 4 > /sys/devices/system/cpu/cpu0/core_ctl/min_cpus
+      echo 60 > /sys/devices/system/cpu/cpu0/core_ctl/busy_up_thres
+      echo 40 > /sys/devices/system/cpu/cpu0/core_ctl/busy_down_thres
       echo 100 > /sys/devices/system/cpu/cpu0/core_ctl/offline_delay_ms
       echo 0 > /sys/devices/system/cpu/cpu0/core_ctl/is_big_cluster
       echo 8 > /sys/devices/system/cpu/cpu0/core_ctl/task_thres
 
       # Setting b.L scheduler parameters
       echo 96 > /proc/sys/kernel/sched_upmigrate
-      echo 92 > /proc/sys/kernel/sched_downmigrate
+      echo 90 > /proc/sys/kernel/sched_downmigrate
       echo 140 > /proc/sys/kernel/sched_group_upmigrate
       echo 120 > /proc/sys/kernel/sched_group_downmigrate
       echo 1 > /proc/sys/kernel/sched_walt_rotate_big_tasks
 
       # configure governor settings for little cluster
-      echo "pixel_smurfutil" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
-      echo 500 > /sys/devices/system/cpu/cpu0/cpufreq/schedutil/rate_limit_us
+      echo "schedutil" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+      echo 0 > /sys/devices/system/cpu/cpu0/cpufreq/schedutil/rate_limit_us
       echo 1209600 > /sys/devices/system/cpu/cpu0/cpufreq/schedutil/hispeed_freq
       echo 300000 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
 
       # configure governor settings for big cluster
-      echo "pixel_smurfutil" > /sys/devices/system/cpu/cpu6/cpufreq/scaling_governor
-      echo 500 > /sys/devices/system/cpu/cpu6/cpufreq/schedutil/rate_limit_us
+      echo "schedutil" > /sys/devices/system/cpu/cpu6/cpufreq/scaling_governor
+      echo 0 > /sys/devices/system/cpu/cpu6/cpufreq/schedutil/rate_limit_us
       echo 1344000 > /sys/devices/system/cpu/cpu6/cpufreq/schedutil/hispeed_freq
       echo 300000 > /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq
 
@@ -2922,22 +2940,10 @@ case "$target" in
             echo N > /sys/module/lpm_levels/L3/cpu6/ret/idle_enabled
             echo N > /sys/module/lpm_levels/L3/cpu7/ret/idle_enabled
 
-           # Setup final blkio
-           # value for group_idle is us
-           echo 1000 > /dev/blkio/blkio.weight
-           echo 200 > /dev/blkio/background/blkio.weight
-           echo 2000 > /dev/blkio/blkio.group_idle
-           echo 0 > /dev/blkio/background/blkio.group_idle
-           
             # cpuset parameters
-	       echo 1-2 > /dev/cpuset/audio-app/cpus
-	       echo 0-1 > /dev/cpuset/background/cpus
-	       echo 0-7 > /dev/cpuset/camera-daemon/cpus
-	       echo 0-3,5-6 > /dev/cpuset/foreground/cpus
-	       echo 0-3 > /dev/cpuset/restricted/cpus
-	       echo 0-3 > /dev/cpuset/system-background/cpus
-	       echo 0-7 > /dev/cpuset/top-app/cpus
-	
+            echo 0-5 > /dev/cpuset/background/cpus
+            echo 0-5 > /dev/cpuset/system-background/cpus
+
             # Turn off scheduler boost at the end
             echo 0 > /proc/sys/kernel/sched_boost
 
@@ -4349,89 +4355,67 @@ esac
 
 case "$target" in
     "msmnile")
-	if [ -f /proc/sys/kernel/sched_walt_rotate_big_tasks ]; then
-		walt_available=1
-	else
-		walt_available=0
-	fi
+	# Core control parameters for gold
+	echo 2 > /sys/devices/system/cpu/cpu4/core_ctl/min_cpus
+	echo 60 > /sys/devices/system/cpu/cpu4/core_ctl/busy_up_thres
+	echo 30 > /sys/devices/system/cpu/cpu4/core_ctl/busy_down_thres
+	echo 100 > /sys/devices/system/cpu/cpu4/core_ctl/offline_delay_ms
+	echo 3 > /sys/devices/system/cpu/cpu4/core_ctl/task_thres
 
-	if [ "$walt_available" != 0 ]; then
-		# Core control parameters for gold
-		echo 2 > /sys/devices/system/cpu/cpu4/core_ctl/min_cpus
-		echo 60 > /sys/devices/system/cpu/cpu4/core_ctl/busy_up_thres
-		echo 30 > /sys/devices/system/cpu/cpu4/core_ctl/busy_down_thres
-		echo 100 > /sys/devices/system/cpu/cpu4/core_ctl/offline_delay_ms
-		echo 3 > /sys/devices/system/cpu/cpu4/core_ctl/task_thres
+	# Core control parameters for gold+
+	echo 0 > /sys/devices/system/cpu/cpu7/core_ctl/min_cpus
+	echo 60 > /sys/devices/system/cpu/cpu7/core_ctl/busy_up_thres
+	echo 30 > /sys/devices/system/cpu/cpu7/core_ctl/busy_down_thres
+	echo 100 > /sys/devices/system/cpu/cpu7/core_ctl/offline_delay_ms
+	echo 1 > /sys/devices/system/cpu/cpu7/core_ctl/task_thres
+	# Controls how many more tasks should be eligible to run on gold CPUs
+	# w.r.t number of gold CPUs available to trigger assist (max number of
+	# tasks eligible to run on previous cluster minus number of CPUs in
+	# the previous cluster).
+	#
+	# Setting to 1 by default which means there should be at least
+	# 4 tasks eligible to run on gold cluster (tasks running on gold cores
+	# plus misfit tasks on silver cores) to trigger assitance from gold+.
+	echo 1 > /sys/devices/system/cpu/cpu7/core_ctl/nr_prev_assist_thresh
 
-		# Core control parameters for gold+
-		echo 0 > /sys/devices/system/cpu/cpu7/core_ctl/min_cpus
-		echo 60 > /sys/devices/system/cpu/cpu7/core_ctl/busy_up_thres
-		echo 30 > /sys/devices/system/cpu/cpu7/core_ctl/busy_down_thres
-		echo 100 > /sys/devices/system/cpu/cpu7/core_ctl/offline_delay_ms
-		echo 1 > /sys/devices/system/cpu/cpu7/core_ctl/task_thres
+	# Disable Core control on silver
+	echo 0 > /sys/devices/system/cpu/cpu0/core_ctl/enable
 
-
-		# Controls how many more tasks should be eligible to run on gold CPUs
-		# w.r.t number of gold CPUs available to trigger assist (max number of
-		# tasks eligible to run on previous cluster minus number of CPUs in
-		# the previous cluster).
-		#
-		# Setting to 1 by default which means there should be at least
-		# 4 tasks eligible to run on gold cluster (tasks running on gold cores
-		# plus misfit tasks on silver cores) to trigger assitance from gold+.
-		echo 1 > /sys/devices/system/cpu/cpu7/core_ctl/nr_prev_assist_thresh
-
-		# Disable Core control on silver
-		echo 0 > /sys/devices/system/cpu/cpu0/core_ctl/enable
-
-		# Setting b.L scheduler parameters
-		echo 95 95 > /proc/sys/kernel/sched_upmigrate
-		echo 85 85 > /proc/sys/kernel/sched_downmigrate
-		echo 100 > /proc/sys/kernel/sched_group_upmigrate
-		echo 10 > /proc/sys/kernel/sched_group_downmigrate
-		echo 1 > /proc/sys/kernel/sched_walt_rotate_big_tasks
-	fi
+	# Setting b.L scheduler parameters
+	echo 95 95 > /proc/sys/kernel/sched_upmigrate
+	echo 85 85 > /proc/sys/kernel/sched_downmigrate
+	echo 100 > /proc/sys/kernel/sched_group_upmigrate
+	echo 10 > /proc/sys/kernel/sched_group_downmigrate
+	echo 1 > /proc/sys/kernel/sched_walt_rotate_big_tasks
 
 	# cpuset parameters
-	echo 1-2 > /dev/cpuset/audio-app/cpus
-	echo 0-1 > /dev/cpuset/background/cpus
-	echo 0-7 > /dev/cpuset/camera-daemon/cpus
-	echo 0-3,5-6 > /dev/cpuset/foreground/cpus
-	echo 0-3 > /dev/cpuset/restricted/cpus
+	echo 0-3 > /dev/cpuset/background/cpus
 	echo 0-3 > /dev/cpuset/system-background/cpus
-	echo 0-7 > /dev/cpuset/top-app/cpus
 
-	if [ "$walt_available" != 0 ]; then
-		# Turn off scheduler boost at the end
-		echo 0 > /proc/sys/kernel/sched_boost
-	fi
+	# Turn off scheduler boost at the end
+	echo 0 > /proc/sys/kernel/sched_boost
 
 	# configure governor settings for silver cluster
 	echo "schedutil" > /sys/devices/system/cpu/cpufreq/policy0/scaling_governor
-	echo 500 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/up_rate_limit_us
-    echo 20000 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/down_rate_limit_us
-	if [ "$walt_available" != 0 ]; then
-		echo 1209600 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/hispeed_freq
-		echo 1 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/pl
-	fi
+	echo 0 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/up_rate_limit_us
+        echo 0 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/down_rate_limit_us
+	echo 1209600 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/hispeed_freq
+	echo 576000 > /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq
+	echo 1 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/pl
 
 	# configure governor settings for gold cluster
 	echo "schedutil" > /sys/devices/system/cpu/cpufreq/policy4/scaling_governor
-	echo 500 > /sys/devices/system/cpu/cpufreq/policy4/schedutil/up_rate_limit_us
-    echo 20000 > /sys/devices/system/cpu/cpufreq/policy4/schedutil/down_rate_limit_us
-	if [ "$walt_available" != 0 ]; then
-		echo 1612800 > /sys/devices/system/cpu/cpufreq/policy4/schedutil/hispeed_freq
-		echo 1 > /sys/devices/system/cpu/cpufreq/policy4/schedutil/pl
-	fi
+	echo 0 > /sys/devices/system/cpu/cpufreq/policy4/schedutil/up_rate_limit_us
+        echo 0 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/down_rate_limit_us
+	echo 1612800 > /sys/devices/system/cpu/cpufreq/policy4/schedutil/hispeed_freq
+	echo 1 > /sys/devices/system/cpu/cpufreq/policy4/schedutil/pl
 
 	# configure governor settings for gold+ cluster
 	echo "schedutil" > /sys/devices/system/cpu/cpufreq/policy7/scaling_governor
-	echo 500 > /sys/devices/system/cpu/cpufreq/policy7/schedutil/up_rate_limit_us
-    echo 20000 > /sys/devices/system/cpu/cpufreq/policy7/schedutil/down_rate_limit_us
-	if [ "$walt_available" != 0 ]; then
-		echo 1612800 > /sys/devices/system/cpu/cpufreq/policy7/schedutil/hispeed_freq
-		echo 1 > /sys/devices/system/cpu/cpufreq/policy7/schedutil/pl
-	fi
+	echo 0 > /sys/devices/system/cpu/cpufreq/policy7/schedutil/up_rate_limit_us
+        echo 0 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/down_rate_limit_us
+	echo 1612800 > /sys/devices/system/cpu/cpufreq/policy7/schedutil/hispeed_freq
+	echo 1 > /sys/devices/system/cpu/cpufreq/policy7/schedutil/pl
 
 	# configure input boost settings
 	echo "0:1324800" > /sys/module/cpu_boost/parameters/input_boost_freq
@@ -5224,13 +5208,6 @@ case "$console_config" in
         echo "Enable console config to $console_config"
         ;;
 esac
-
-# Setup final blkio
-# value for group_idle is us
-echo 1000 > /dev/blkio/blkio.weight
-echo 200 > /dev/blkio/background/blkio.weight
-echo 2000 > /dev/blkio/blkio.group_idle
-echo 0 > /dev/blkio/background/blkio.group_idle
 
 # Parse misc partition path and set property
 misc_link=$(ls -l /dev/block/bootdevice/by-name/misc)
