@@ -25,9 +25,6 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-on early-init
-    write /proc/sys/kernel/sched_boost 1
-
 on init
     write /dev/stune/foreground/schedtune.sched_boost_no_override 1
     write /dev/stune/top-app/schedtune.sched_boost_no_override 1
@@ -36,6 +33,11 @@ on init
     write /dev/stune/system-background/schedtune.colocate 0
     write /dev/stune/foreground/schedtune.colocate 0
     write /dev/stune/top-app/schedtune.colocate 1
+
+    # Disable UFS powersaving
+    write /sys/devices/platform/soc/${ro.boot.bootdevice}/clkscale_enable 0
+    write /sys/devices/platform/soc/${ro.boot.bootdevice}/clkgate_enable 0
+    write /sys/devices/platform/soc/${ro.boot.bootdevice}/hibern8_on_idle_enable 0
 
     # Disable powersaving
     write /sys/module/lpm_levels/parameters/sleep_disabled 1
@@ -55,32 +57,35 @@ on boot
     # Silver only configuration cannot work with 0-7
     write /dev/cpuset/audio-app/cpus 2-3
     write /dev/cpuset/background/cpus 4-5
-    write /dev/cpuset/camera-daemon/cpus 0-7
-    write /dev/cpuset/restricted/cpus 0-3
     write /dev/cpuset/system-background/cpus 2-5
     write /dev/cpuset/top-app/cpus 0-7
-    write /dev/cpuset/foreground/boost/cpus 0-7
-    
-on charger
-    write /sys/devices/system/cpu/cpu0/online 1
-    write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor "userspace"
-    write /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 633600
-    write /sys/devices/system/cpu/cpu1/online 1
-    write /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor "userspace"
-    write /sys/devices/system/cpu/cpu1/cpufreq/scaling_max_freq 633600
+
+on property:init.svc.vendor.charger=running
+    setprop persist.sys.usb.config mass_storage
+    load_system_props
+
+    # Keep one LITTLE and one big
+    write /sys/devices/system/cpu/cpu1/online 0
     write /sys/devices/system/cpu/cpu2/online 0
     write /sys/devices/system/cpu/cpu3/online 0
     write /sys/devices/system/cpu/cpu4/online 0
     write /sys/devices/system/cpu/cpu5/online 0
-    write /sys/devices/system/cpu/cpu6/online 0
     write /sys/devices/system/cpu/cpu7/online 0
     wait /dev/block/bootdevice
 
+    # Enable UFS powersaving
+    write /sys/devices/platform/soc/${ro.boot.bootdevice}/clkscale_enable 1
+    write /sys/devices/platform/soc/${ro.boot.bootdevice}/clkgate_enable 1
+    write /sys/devices/platform/soc/${ro.boot.bootdevice}/hibern8_on_idle_enable 1
+
     # Turn on sleep modes
     write /sys/module/lpm_levels/parameters/sleep_disabled 0
-    write /sys/module/lpm_levels/system/system-pc/idle_enabled 0
 
     write /sys/module/msm_thermal/parameters/enabled "N"
+    symlink /dev/block/platform/soc/7c4000.sdhci /dev/block/bootdevice
+    mkdir /mnt/vendor/persist
+    chown root system /mnt/vendor/persist
+    chmod 0771 /mnt/vendor/persist
     mount ext4 /dev/block/bootdevice/by-name/persist /persist nosuid nodev barrier=1
 
     start vendor.hvdcp_opti
@@ -99,16 +104,16 @@ on enable-low-power
 
     # Core control parameters on silver
     write /sys/devices/system/cpu/cpu0/core_ctl/not_preferred "0 0 0 0 1 1"
-    write /sys/devices/system/cpu/cpu0/core_ctl/min_cpus 4
+    write /sys/devices/system/cpu/cpu0/core_ctl/min_cpus 2
     write /sys/devices/system/cpu/cpu0/core_ctl/busy_up_thres 60
-    write /sys/devices/system/cpu/cpu0/core_ctl/busy_down_thres 40
+    write /sys/devices/system/cpu/cpu0/core_ctl/busy_down_thres 30
     write /sys/devices/system/cpu/cpu0/core_ctl/offline_delay_ms 100
     write /sys/devices/system/cpu/cpu0/core_ctl/is_big_cluster 0
     write /sys/devices/system/cpu/cpu0/core_ctl/task_thres 8
 
     # Setting b.L scheduler parameters
     write /proc/sys/kernel/sched_upmigrate 96
-    write /proc/sys/kernel/sched_downmigrate 40
+    write /proc/sys/kernel/sched_downmigrate 90
     write /proc/sys/kernel/sched_group_upmigrate 140
     write /proc/sys/kernel/sched_group_downmigrate 120
     write /proc/sys/kernel/sched_walt_rotate_big_tasks 1
@@ -122,18 +127,13 @@ on enable-low-power
     # Configure governor settings for big cluster
     write /sys/devices/system/cpu/cpu6/cpufreq/scaling_governor "schedutil"
     write /sys/devices/system/cpu/cpu6/cpufreq/schedutil/rate_limit_us 0
+    write /sys/devices/system/cpu/cpu6/cpufreq/schedutil/hispeed_load 85
     write /sys/devices/system/cpu/cpu6/cpufreq/schedutil/hispeed_freq 1344000
     write /sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq 300000
-
-    # sched_load_boost as -6 is equivalent to target load as 85. It is per cpu tunable.
     write /sys/devices/system/cpu/cpu6/sched_load_boost -6
     write /sys/devices/system/cpu/cpu7/sched_load_boost -6
-    write /sys/devices/system/cpu/cpu6/cpufreq/schedutil/hispeed_load 85
-
-    write /sys/module/cpu_boost/parameters/input_boost_freq "0:1036800"
-    write /sys/module/cpu_boost/parameters/input_boost_ms 120
-    write /sys/module/cpu_boost/parameters/powerkey_input_boost_freq "0:1036800
-    write /sys/module/cpu_boost/parameters/powerkey_input_boost_ms 400
+    write /sys/module/cpu_boost/parameters/input_boost_freq "0:1209600"
+    write /sys/module/cpu_boost/parameters/input_boost_ms 40
 
     # Enable oom_reaper
     write /sys/module/lowmemorykiller/parameters/oom_reaper 1
@@ -150,6 +150,9 @@ on enable-low-power
     write /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/guard_band_mbps 0
     write /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/up_scale 250
     write /sys/class/devfreq/soc:qcom,cpubw/bw_hwmon/idle_mbps 1600
+
+    write /sys/class/devfreq/soc:qcom,mincpubw/governor "cpufreq"
+    write /sys/class/devfreq/soc:qcom,mincpubw/polling_interval 10
 
     # Enable mem_latency governor for DDR scaling
     write /sys/class/devfreq/soc:qcom,memlat-cpu0/governor "mem_latency"
@@ -173,11 +176,9 @@ on enable-low-power
     write /sys/class/devfreq/soc:qcom,l3-cdsp/governor "userspace"
     chown system /sys/class/devfreq/soc:qcom,l3-cdsp/userspace/set_freq
 
-    write /sys/class/devfreq/soc:qcom,mincpubw/governor "cpufreq"
-
     # Set cpuset parameters
-    write /dev/cpuset/background/cpus 0-5
-    write /dev/cpuset/system-background/cpus 0-5
+    write /dev/cpuset/background/cpus 4-5
+    write /dev/cpuset/system-background/cpus 2-5
 
     # Turn off scheduler boost at the end
     write /proc/sys/kernel/sched_boost 0
@@ -195,13 +196,10 @@ on enable-low-power
     # Turn on sleep modes
     write /sys/module/lpm_levels/parameters/sleep_disabled 0
 
-    write /sys/module/vmpressure/parameters/allocstall_threshold 0
-    write /proc/sys/vm/swappiness 100
-    write /proc/sys/vm/watermark_scale_factor 1
-
-    # Enable adaptive LMK for all targets &
-    # use Google default LMK series for all 64-bit targets >=2GB.
-    write /sys/module/lowmemorykiller/parameters/enable_adaptive_lmk 1
+    # Enable UFS powersaving
+    write /sys/devices/platform/soc/${ro.boot.bootdevice}/clkscale_enable 1
+    write /sys/devices/platform/soc/${ro.boot.bootdevice}/clkgate_enable 1
+    write /sys/devices/platform/soc/${ro.boot.bootdevice}/hibern8_on_idle_enable 1
 
     # Set LMK minfree
     write /sys/module/lowmemorykiller/parameters/minfree "18432,23040,27648,32256,85296,120640"
