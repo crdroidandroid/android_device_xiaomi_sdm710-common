@@ -1,3 +1,4 @@
+# Common proprietary files - from sirius' MIUI package V11.0.3.0.QEBCNXM Xiaomi.eu stable version
 # ADSP
 vendor/bin/adsprpcd
 vendor/lib64/libadsp_default_listener.so
