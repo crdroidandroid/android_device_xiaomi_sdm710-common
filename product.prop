@@ -58,6 +58,8 @@ ro.lmk.log_stats=true
 
 # Media
 media.stagefright.thumbnail.prefer_hw_codecs=true
+debug.stagefright.omx_default_rank.sw-audio=1
+debug.stagefright.omx_default_rank=0
 media.settings.xml=/vendor/etc/media_profiles_vendor.xml
 
 # Memory optimizations
