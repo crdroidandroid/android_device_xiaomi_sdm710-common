@@ -339,7 +339,15 @@ on post-fs-data
     mkdir /data/vendor/fm 0770 system system
     chmod 0770 /data/vendor/fm
 
+    #Create PERFD deamon related dirs
+    mkdir /data/vendor/perfd 0770 root system
+    chmod 2770 /data/vendor/perfd
+    rm /data/vendor/perfd/default_values
+
     mkdir /data/vendor/secure_element 0777 system system
+
+    #Create IOP  deamon related dirs
+    mkdir /data/vendor/iop 0700 root system
 
     # Mark the copy complete flag to not completed
     write /data/vendor/radio/copy_complete 0
@@ -449,9 +457,6 @@ on property:sys.boot_completed=1
     swapon_all /vendor/etc/fstab.qcom
     write /proc/sys/vm/swappiness 100
     write /proc/sys/vm/watermark_scale_factor 120
-
-    # Enable PowerHAL hint processing
-    setprop vendor.powerhal.init 1
 
 # corefile limit
 on property:persist.debug.trace=1
