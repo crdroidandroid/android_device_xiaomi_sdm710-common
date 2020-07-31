@@ -34,6 +34,9 @@ public class ProximitySensor implements SensorEventListener {
     private static final String TAG = "PocketModeProximity";
     private static final boolean DEBUG = false;
 
+    private static final String FP_PROX_NODE =
+            "/sys/devices/platform/soc/soc:fingerprint_goodix/proximity_state";
+
     private ExecutorService mExecutorService;
     private Context mContext;
     private Sensor mSensor;
@@ -52,7 +55,12 @@ public class ProximitySensor implements SensorEventListener {
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        /* Empty */
+        boolean isNear = event.values[0] < mSensor.getMaximumRange();
+        try {
+            FileUtils.stringToFile(FP_PROX_NODE, isNear ? "1" : "0");
+        } catch (IOException e) {
+            Log.e(TAG, "Failed to write to " + FP_PROX_NODE, e);
+        }
     }
 
     @Override
