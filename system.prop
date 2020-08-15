@@ -106,3 +106,6 @@ ro.surface_flinger.max_virtual_display_dimension=4096
 
 # Seamless transfer
 sys.fflag.override.settings_seamless_transfer=true
+
+# Zygote
+persist.device_config.runtime_native.usap_pool_enabled=true
