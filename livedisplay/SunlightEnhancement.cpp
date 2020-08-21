@@ -38,10 +38,19 @@ static constexpr const char* kHbmStatusPath =
 
 static constexpr const char* kDispParamHbmOff = "0xF0000";
 static constexpr const char* kDispParamHbmOn = "0x10000";
+static constexpr const char* kDispParamHbmFodOff = "0xE0000";
+static constexpr const char* kDispParamHbmFodOn = "0x20000";
 
 bool hasAmoledPanel() {
     std::string device = android::base::GetProperty("ro.product.device", "");
-    return (device == "sirius");
+    return device == "grus" || device == "pyxis" ||
+            device == "sirius" || device == "vela";
+}
+
+bool hasFingerprintOnDisplay() {
+    std::string device = android::base::GetProperty("ro.product.device", "");
+    return device == "grus" || device == "pyxis" ||
+            device == "vela";
 }
 
 bool SunlightEnhancement::isSupported() {
@@ -70,7 +79,11 @@ Return<bool> SunlightEnhancement::isEnabled() {
 
 Return<bool> SunlightEnhancement::setEnabled(bool enabled) {
     std::ofstream disp_param_file(kDispParamPath);
+    if (hasFingerprintOnDisplay()) {
+        disp_param_file << (enabled ? kDispParamHbmFodOn : kDispParamHbmFodOff);
+    } else {
         disp_param_file << (enabled ? kDispParamHbmOn : kDispParamHbmOff);
+    }
     LOG(DEBUG) << "setEnabled fail " << disp_param_file.fail();
     return !disp_param_file.fail();
 }

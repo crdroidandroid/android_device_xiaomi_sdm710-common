@@ -15,7 +15,6 @@
      limitations under the License.
 -->
 <resources>
-
     <!-- Dirac settings -->
     <string name="dirac_title">Dirac sound enhancer</string>
     <string name="dirac_headset_title">Headset type</string>
@@ -68,5 +67,4 @@
     <string name="thermal_dialer">Dialer</string>
     <string name="thermal_gaming">Gaming</string>
     <string name="thermal_streaming">Streaming</string>
-
 </resources>
