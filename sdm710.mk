@@ -218,10 +218,6 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     android.hardware.light@2.0-service.xiaomi_sdm710
 
-# LiveDisplay
-PRODUCT_PACKAGES += \
-    vendor.lineage.livedisplay@2.0-service-sdm
-
 # Media
 PRODUCT_PACKAGES += \
     libc2dcolorconvert \
@@ -343,7 +339,7 @@ PRODUCT_PACKAGES += \
     android.hardware.vibrator@1.0-service
 
 # VR
-PRODUCT_PACKAGES += \
+#PRODUCT_PACKAGES += \
     android.hardware.vr@1.0-impl \
     android.hardware.vr@1.0-service \
     vr.sdm710
@@ -374,5 +370,5 @@ PRODUCT_PACKAGES += \
     libqdMetaData \
     libqdMetaData.system
 
-PRODUCT_BOOT_JARS += \
+#PRODUCT_BOOT_JARS += \
     WfdCommon
