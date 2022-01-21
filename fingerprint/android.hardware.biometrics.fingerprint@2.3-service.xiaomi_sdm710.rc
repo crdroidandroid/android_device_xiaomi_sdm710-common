@@ -2,10 +2,14 @@ on init
     # Goodix fingerprint
     chown system system /dev/goodix_fp
 
-    # Synaptics fingerprint
-    chown system system /dev/vfsspi
-
 on boot
+    chown system system /sys/devices/platform/soc/soc:qcom,dsi-display-primary/fod_pressed
+    chown system system /sys/devices/platform/soc/soc:qcom,dsi-display-primary/fod_ui
+    chown system system /sys/devices/virtual/touch/tp_dev/fod_status
+    chmod 0644 /sys/devices/platform/soc/soc:qcom,dsi-display-primary/fod_pressed
+    chmod 0660 /sys/devices/platform/soc/soc:qcom,dsi-display-primary/fod_ui
+    chmod 0660 /sys/devices/virtual/touch/tp_dev/fod_status
+
     chown system system /sys/bus/platform/devices/soc:fingerprint_fpc/irq
     chown system system /sys/bus/platform/devices/soc:fingerprint_fpc/irq_enable
     chown system system /sys/bus/platform/devices/soc:fingerprint_fpc/wakeup_enable
@@ -35,11 +39,9 @@ on post-fs-data
     mkdir /data/vendor/goodix 0770 system system
     mkdir /data/vendor/goodix/gf_data/authenticate 0770 system system
     mkdir /data/vendor/goodix/gf_data/enroll 0770 system system
-    mkdir /data/vendor/syna 0770 system system
-    mkdir /data/vendor/syna/ist/ 0770 system system
     chown system system /data/vendor
 
-service vendor.fps_hal /vendor/bin/hw/android.hardware.biometrics.fingerprint@2.1-service.xiaomi_sdm710
+service vendor.fps_hal /vendor/bin/hw/android.hardware.biometrics.fingerprint@2.3-service.xiaomi_sdm710
     # "class hal" causes a race condition on some devices due to files created
     # in /data. As a workaround, postpone startup until later in boot once
     # /data is mounted.
