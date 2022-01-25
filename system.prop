@@ -111,6 +111,7 @@ persist.radio.dynamic_sar=false
 persist.radio.charge_sar_control=false
 persist.radio.modem_dynamic_sar_state=close
 persist.radio.multisim.config=dsds
+persist.sys.fflag.override.settings_provider_model=false
 persist.radio.NO_STAPA=1
 persist.radio.sar_sar_sensor=true
 persist.vendor.radio.apm_sim_not_pwdn=1
